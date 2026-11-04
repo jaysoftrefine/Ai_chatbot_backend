@@ -5,11 +5,16 @@ from app.core.config import settings
 from app.db.base import Base
 
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+db_url = settings.DATABASE_URL
+
+if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+elif db_url.startswith("postgresql://"):
+    # Normalize to psycopg 3 driver
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     connect_args=connect_args,
     pool_pre_ping=True,
 )
@@ -37,4 +42,3 @@ def init_db() -> None:
         McpToolRun,
     )  # noqa: F401
     Base.metadata.create_all(bind=engine)
-

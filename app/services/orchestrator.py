@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class AIOrchestrator:
-    def __init__(self):
-        self.llm = get_llm_provider()
+    @property
+    def llm(self) -> BaseLLMProvider:
+        return get_llm_provider()
 
     async def handle_chat(
         self,

@@ -8,12 +8,24 @@ from app.generators.schemas import (
 )
 
 
+class ExplicitPreferenceSpec(BaseModel):
+    category: str
+    key: str
+    value: str | bool | int | float
+
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)
+
+    def get(self, item: str, default: Any = None) -> Any:
+        return getattr(self, item, default)
+
+
 class IntentClassificationResult(BaseModel):
     intent: str  # "conversation" | "generate_document" | "clarification"
     format: str | None = None  # "excel" | "word" | "powerpoint"
     subject: str | None = None
     clarification_question: str | None = None
-    explicit_preference: dict[str, Any] | None = None
+    explicit_preference: ExplicitPreferenceSpec | None = None
 
 
 class BaseLLMProvider(ABC):

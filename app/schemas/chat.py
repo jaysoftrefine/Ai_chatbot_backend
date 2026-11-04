@@ -13,6 +13,7 @@ class MessageOut(BaseModel):
     intent: str | None = None
     created_at: datetime
     metadata: dict[str, Any] | None = None
+    file: GeneratedFileOut | None = None
 
 
 class ConversationOut(BaseModel):

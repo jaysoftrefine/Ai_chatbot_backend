@@ -6,6 +6,7 @@ class DiscoveredTool(BaseModel):
     name: str
     description: str
     input_schema: dict[str, Any] = {}
+    read_only: bool = False
 
 
 class MicrosoftIntegrationStatus(BaseModel):
@@ -23,3 +24,17 @@ class MicrosoftIntegrationStatus(BaseModel):
     }
     fallback_active: bool = True
 
+
+class GoogleDocsIntegrationStatus(BaseModel):
+    enabled: bool
+    server_url: str
+    transport: str = "streamable_http"
+    connected: bool
+    authenticated: bool
+    discovered_tools: list[DiscoveredTool] = []
+    capabilities: dict[str, bool] = {
+        "read_doc": False,
+        "update_doc": False,
+    }
+    preview_program_required: bool = True
+    error: str | None = None

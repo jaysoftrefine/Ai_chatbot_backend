@@ -13,7 +13,11 @@ from app.schemas.chat import (
     ConversationDetailOut,
     MessageOut,
 )
-from app.schemas.integrations import MicrosoftIntegrationStatus, DiscoveredTool
+from app.schemas.integrations import (
+    MicrosoftIntegrationStatus,
+    GoogleDocsIntegrationStatus,
+    DiscoveredTool,
+)
 
 __all__ = [
     "UserCreate",
@@ -31,5 +35,6 @@ __all__ = [
     "ConversationDetailOut",
     "MessageOut",
     "MicrosoftIntegrationStatus",
+    "GoogleDocsIntegrationStatus",
     "DiscoveredTool",
 ]

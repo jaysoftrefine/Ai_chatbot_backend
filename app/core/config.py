@@ -24,10 +24,18 @@ class Settings(BaseSettings):
     ]
 
     # LLM Settings
-    LLM_PROVIDER: str = "fake"  # 'fake' | 'openai' | 'anthropic' | 'gemini'
-    LLM_MODEL: str = "fake-default"
-    LLM_API_KEY: str = ""
+    LLM_PROVIDER: str = "fake"  # 'google' | 'gemini' | 'fake'
+    GEMINI_API_KEY: str = ""
+    LLM_API_KEY: str = ""  # fallback / legacy
+    LLM_MODEL: str = "gemini-2.5-flash"  # latest Google GenAI flash model
     LLM_API_BASE: str = ""
+
+    # Google Docs MCP Settings
+    GOOGLE_DOCS_MCP_ENABLED: bool = False
+    GOOGLE_DOCS_MCP_SERVER_URL: str = "https://docsmcp.googleapis.com/mcp/v1"
+    GOOGLE_OAUTH_CLIENT_ID: str = ""
+    GOOGLE_OAUTH_CLIENT_SECRET: str = ""
+    GOOGLE_OAUTH_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/callback/google"
 
     # Microsoft MCP Settings
     MICROSOFT_MCP_ENABLED: bool = False
@@ -43,6 +51,10 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_SECRET: str = ""
     MICROSOFT_REDIRECT_URI: str = ""
     MICROSOFT_GRAPH_ENABLED: bool = False
+
+    @property
+    def effective_gemini_api_key(self) -> str:
+        return self.GEMINI_API_KEY.strip() or self.LLM_API_KEY.strip()
 
     model_config = SettingsConfigDict(
         env_file=".env",
