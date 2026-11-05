@@ -23,5 +23,10 @@ class UserOut(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
     user: UserOut
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str | None = None

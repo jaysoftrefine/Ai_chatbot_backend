@@ -28,16 +28,44 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
     
     to_encode = {
         "sub": str(subject),
+        "type": "access",
         "exp": expire,
         "iat": datetime.now(timezone.utc),
     }
-    encoded_jwt = jwt.encode(to_encode, settings.APP_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.effective_jwt_secret_key, algorithm=ALGORITHM)
+
+
+def create_refresh_token(subject: str | Any, expires_delta: Optional[timedelta] = None) -> str:
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    to_encode = {
+        "sub": str(subject),
+        "type": "refresh",
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(to_encode, settings.effective_jwt_secret_key, algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> Optional[dict[str, Any]]:
     try:
-        payload = jwt.decode(token, settings.APP_SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.effective_jwt_secret_key, algorithms=[ALGORITHM])
+        # If type is specified, it must be 'access'
+        if payload.get("type") and payload.get("type") != "access":
+            return None
+        return payload
+    except (jwt.PyJWTError, Exception):
+        return None
+
+
+def decode_refresh_token(token: str) -> Optional[dict[str, Any]]:
+    try:
+        payload = jwt.decode(token, settings.effective_jwt_secret_key, algorithms=[ALGORITHM])
+        if payload.get("type") != "refresh":
+            return None
         return payload
     except (jwt.PyJWTError, Exception):
         return None

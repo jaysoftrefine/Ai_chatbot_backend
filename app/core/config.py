@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     APP_ENV: str = "development"
     APP_SECRET_KEY: str = "dev-insecure-secret-key-replace-in-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    JWT_SECRET_KEY: str = ""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Database
     DATABASE_URL: str = "sqlite:///./storage/assistant.db"
@@ -51,6 +53,14 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_SECRET: str = ""
     MICROSOFT_REDIRECT_URI: str = ""
     MICROSOFT_GRAPH_ENABLED: bool = False
+
+    @property
+    def effective_jwt_secret_key(self) -> str:
+        return self.JWT_SECRET_KEY.strip() or self.APP_SECRET_KEY.strip()
+
+    @property
+    def effective_jwt_refresh_secret_key(self) -> str:
+        return self.effective_jwt_secret_key
 
     @property
     def effective_gemini_api_key(self) -> str:
