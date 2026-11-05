@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.files import GeneratedFileOut
+from app.services.rag.rag_service import rag_service
 from app.services.storage_service import storage_service
 
 router = APIRouter()
@@ -34,6 +35,43 @@ def list_files(
 ):
     files = storage_service.list_user_files(db, current_user.id)
     return [make_file_out(f) for f in files]
+
+
+@router.post("/upload", response_model=GeneratedFileOut, status_code=status.HTTP_201_CREATED)
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+
+    record = storage_service.save_uploaded_file(
+        db=db,
+        user_id=current_user.id,
+        filename=file.filename,
+        content=content,
+    )
+
+    # Index into RAG knowledge base
+    try:
+        rag_service.index_file(
+            db=db,
+            user_id=current_user.id,
+            file_id=record.id,
+            file_name=record.file_name,
+            file_path=Path(record.storage_key),
+        )
+    except Exception as e:
+        # Non-fatal to file upload, but logged
+        import logging
+        logging.getLogger(__name__).warning(f"Could not index uploaded file {record.file_name} into RAG: {e}")
+
+    return make_file_out(record)
 
 
 @router.get("/{file_id}", response_model=GeneratedFileOut)

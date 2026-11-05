@@ -13,6 +13,7 @@ from app.schemas.chat import ChatResponse
 from app.schemas.files import GeneratedFileOut
 from app.services.llm.factory import get_llm_provider
 from app.services.memory_manager import memory_manager
+from app.services.rag.rag_service import rag_service
 from app.services.storage_service import storage_service
 
 logger = logging.getLogger(__name__)
@@ -107,20 +108,27 @@ class AIOrchestrator:
             if "no table" in lower_msg or "without table" in lower_msg:
                 effective_hints["word.use_tables"] = False
 
+            # Retrieve relevant RAG context from previous generated or uploaded files
+            rag_chunks = rag_service.search_relevant_chunks(db, user_id=user_id, query=message_text, top_k=3)
+            doc_prompt = message_text
+            if rag_chunks:
+                context_str = "\n\n".join([f"From '{c['file_name']}':\n{c['content']}" for c in rag_chunks])
+                doc_prompt = f"{message_text}\n\nRelevant user documents context:\n{context_str}"
+
             # Allocate storage path
             file_id, dest_path = storage_service.allocate_file_path(user_id, fmt)
 
             try:
                 if fmt == "excel":
-                    content = self.llm.generate_excel_content(message_text, effective_hints)
+                    content = self.llm.generate_excel_content(doc_prompt, effective_hints)
                     generate_excel_file(content, dest_path)
                     original_name = f"{content.title.replace(' ', '_')}.xlsx"
                 elif fmt == "word":
-                    content = self.llm.generate_word_content(message_text, effective_hints)
+                    content = self.llm.generate_word_content(doc_prompt, effective_hints)
                     generate_word_file(content, dest_path)
                     original_name = f"{content.title.replace(' ', '_')}.docx"
                 elif fmt == "powerpoint":
-                    content = self.llm.generate_powerpoint_content(message_text, effective_hints)
+                    content = self.llm.generate_powerpoint_content(doc_prompt, effective_hints)
                     generate_powerpoint_file(content, dest_path)
                     original_name = f"{content.deck_title.replace(' ', '_')}.pptx"
                 else:
@@ -135,6 +143,18 @@ class AIOrchestrator:
                     original_name=original_name,
                     format_type=fmt,
                 )
+
+                # Automatically index newly generated file into RAG
+                try:
+                    rag_service.index_file(
+                        db=db,
+                        user_id=user_id,
+                        file_id=file_record.id,
+                        file_name=file_record.file_name,
+                        file_path=dest_path,
+                    )
+                except Exception as rag_err:
+                    logger.warning(f"Failed to index generated file {file_record.file_name} into RAG: {rag_err}")
 
                 file_out = GeneratedFileOut(
                     id=file_record.id,
@@ -188,7 +208,10 @@ class AIOrchestrator:
 
         else:
             # Normal conversational intent
-            # Retrieve recent conversation messages
+            # 1. Retrieve relevant excerpts from user documents via RAG
+            rag_chunks = rag_service.search_relevant_chunks(db, user_id=user_id, query=message_text, top_k=4)
+
+            # 2. Retrieve recent conversation messages
             recent_msgs = (
                 db.query(Message)
                 .filter(Message.conversation_id == conv.id)
@@ -202,6 +225,19 @@ class AIOrchestrator:
             sys_prompt = "You are a helpful AI personal productivity assistant."
             if general_prefs:
                 sys_prompt += f" User preferences: {json.dumps(general_prefs)}"
+
+            if rag_chunks:
+                context_sections = []
+                for c in rag_chunks:
+                    context_sections.append(
+                        f"--- Document '{c['file_name']}' (relevance: {c['similarity_score']}) ---\n{c['content']}"
+                    )
+                sys_prompt += (
+                    "\n\n### Relevant User Files & Knowledge Base Context:\n"
+                    "Use the following excerpts from the user's uploaded or previously generated documents to answer their question accurately. "
+                    "Cite the document name when referencing information from it.\n\n"
+                    + "\n\n".join(context_sections)
+                )
 
             assistant_text = self.llm.chat(chat_history, system_prompt=sys_prompt)
 

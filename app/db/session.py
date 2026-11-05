@@ -40,5 +40,6 @@ def init_db() -> None:
         PersonaPreference,
         GeneratedFile,
         McpToolRun,
+        DocumentChunk,
     )  # noqa: F401
     Base.metadata.create_all(bind=engine)

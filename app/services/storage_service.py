@@ -11,12 +11,20 @@ MIME_TYPES = {
     "excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "word": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "powerpoint": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "pdf": "application/pdf",
+    "text": "text/plain",
+    "markdown": "text/markdown",
+    "csv": "text/csv",
 }
 
 EXTENSIONS = {
     "excel": "xlsx",
     "word": "docx",
     "powerpoint": "pptx",
+    "pdf": "pdf",
+    "text": "txt",
+    "markdown": "md",
+    "csv": "csv",
 }
 
 
@@ -101,6 +109,42 @@ class StorageService:
         return db.query(GeneratedFile).filter(
             GeneratedFile.user_id == user_id,
         ).order_by(GeneratedFile.created_at.desc()).all()
+
+    def save_uploaded_file(
+        self,
+        db: Session,
+        user_id: str,
+        filename: str,
+        content: bytes,
+    ) -> GeneratedFile:
+        lower_name = filename.lower()
+        if lower_name.endswith(".xlsx"):
+            format_type = "excel"
+        elif lower_name.endswith(".docx"):
+            format_type = "word"
+        elif lower_name.endswith(".pptx"):
+            format_type = "powerpoint"
+        elif lower_name.endswith(".pdf"):
+            format_type = "pdf"
+        elif lower_name.endswith(".md"):
+            format_type = "markdown"
+        elif lower_name.endswith(".csv"):
+            format_type = "csv"
+        else:
+            format_type = "text"
+
+        file_id, file_path = self.allocate_file_path(user_id, format_type)
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        return self.register_file(
+            db=db,
+            user_id=user_id,
+            file_id=file_id,
+            file_path=file_path,
+            original_name=filename,
+            format_type=format_type,
+        )
 
 
 storage_service = StorageService()

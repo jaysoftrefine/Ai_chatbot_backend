@@ -5,6 +5,7 @@ from app.db.models.conversation_summary import ConversationSummary
 from app.db.models.persona_preference import PersonaPreference
 from app.db.models.generated_file import GeneratedFile
 from app.db.models.mcp_tool_run import McpToolRun
+from app.db.models.document_chunk import DocumentChunk
 
 __all__ = [
     "User",
@@ -14,5 +15,6 @@ __all__ = [
     "PersonaPreference",
     "GeneratedFile",
     "McpToolRun",
+    "DocumentChunk",
 ]
 
